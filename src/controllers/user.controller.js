@@ -7,7 +7,7 @@ import { ApiResponse } from "../utils/ApiResponse.util.js";
 const registerUser = asyncHandler(async (req, res) => {
   // step-1: get user details, that required to be stored from 'req'
   const { username, email, fullName, password } = req.body;
-  console.log("email: ", email);
+  // console.log("email: ", email);
 
   // step-2: validate/ check the data for non-empty and types
   if (
@@ -20,18 +20,18 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   // 3: check if user already exists
-  const existingUser = User.findOne({
+  const existingUser = await User.findOne({
     $or: [{ email }, { username }],
   });
 
-  if (existingUser.email === email) {
+  if (existingUser && existingUser.email === email) {
     throw new ApiError(
       409,
       "It seems user is already registered, try logging in!"
     );
   }
 
-  if (existingUser.username === username) {
+  if (existingUser && existingUser.username === username) {
     throw new ApiError(409, "Username is already taken, try a new one!");
   }
 
@@ -43,16 +43,44 @@ const registerUser = asyncHandler(async (req, res) => {
   // }
 
   // 4: check for images, avtar is required
-  const avatarLocalFilePath = req.files?.avatar[0].path;
-  const coverImageLocalFilePath = req.files?.coverImage[0].path;
+  // console.log(req.body);
+  // console.log(req.files);
 
-  if (!avatarLocalFilePath) {
+  // const avatarLocalFilePath = req.files?.avatar[0].path;
+  // const coverImageLocalFilePath = req.files?.coverImage[0].path;
+
+  // if (!avatarLocalFilePath) {
+  //   throw new ApiError(400, "Avatar is required!");
+  // }
+
+  let avatarLocalFilePath = "";
+  let coverImageLocalFilePath = "";
+
+  if (
+    req.files &&
+    Array.isArray(req.files.avatar) &&
+    req.files.avatar.length > 0
+  ) {
+    avatarLocalFilePath = req.files.avatar[0].path;
+  } else {
     throw new ApiError(400, "Avatar is required!");
+  }
+
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalFilePath = req.files.coverImage[0].path;
   }
 
   // 5: upload to cloudinary
   const avatar = await uploadOnCloudinary(avatarLocalFilePath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+  // const coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+  let coverImage = "";
+  if (coverImageLocalFilePath) {
+    coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+  }
 
   // 6: check if uploading to cloudinary is successful and if it returns required response
   if (!avatar) {
