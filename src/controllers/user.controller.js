@@ -299,4 +299,82 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changePassword = asyncHandler(async (req, res) => {
+  // check if user is logged in? -> delegate to the 'auth.middleware.js'
+  // [optional]: check if 'newPassword' and its confirmation,
+  // i.e., 'confirmedPassword' are same
+  // find user with the id obtained from the 'req.user'
+  // user the 'isPasswordCorrect' method from the user model the check the oldPassword
+  // change the password to the newPassword and save it in the db
+
+  const { oldPassword, newPassword, confirmedPassword } = req.body;
+
+  if(!oldPassword || !newPassword){
+    throw new ApiError(400, "All the fields are required!");
+  }
+
+  if (newPassword != confirmedPassword) {
+    throw new ApiError(
+      400,
+      "Mismatch is found between the newPassword and its confirmation password!"
+    );
+  }
+
+  const user = await User.findById(req.user?._id);
+
+  const passwordCheck = await user.isPasswordCorrect(oldPassword);
+
+  if (!passwordCheck) {
+    throw new ApiError(400, "Invalid old password!");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res.status(200).json(new ApiResponse(200, req.user, ""));
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  // use 'auth.middleware.js' to check if user is logged in
+  // and obtain the req.user object
+  // check if either of the fields that is required to be updated is sent or not
+  // update the fields that are sent to be updated
+  // save the user to the db
+  // return the updated user
+
+  const { fullName, email } = req.body;
+
+  if (!fullName && !email) {
+    throw new ApiError(400, "Either of fullName and email is required!");
+  }
+
+  if (fullName) {
+    req.user.fullName = fullName;
+  }
+
+  if (email) {
+    req.user.email = email;
+  }
+
+  await req.user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "User details updated!"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changePassword,
+  getCurrentUser,
+  updateAccountDetails,
+};
