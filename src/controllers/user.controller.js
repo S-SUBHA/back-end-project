@@ -309,7 +309,7 @@ const changePassword = asyncHandler(async (req, res) => {
 
   const { oldPassword, newPassword, confirmedPassword } = req.body;
 
-  if(!oldPassword || !newPassword){
+  if (!oldPassword || !newPassword) {
     throw new ApiError(400, "All the fields are required!");
   }
 
@@ -369,6 +369,84 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, req.user, "User details updated!"));
 });
 
+const updateAvatar = asyncHandler(async (req, res) => {
+  // allow updating file only if user is logged in
+  // take the file through 'multer' middleware
+  // save the file in cloudinary
+  // save the cloudinary-links of the file to the db
+
+  const avatarLocalFilePath = req.file?.path;
+  // console.log(req.file);
+
+  if (!avatarLocalFilePath) {
+    throw new ApiError(400, "Avatar is missing!");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalFilePath);
+  // console.log(avatar);
+
+  if (!avatar.url) {
+    throw new ApiError(
+      500,
+      "Something went wrong while updating the avatar! Please try again!"
+    );
+  }
+
+  req.user.avatar = avatar.url;
+  await req.user.save({ validateBeforeSave: false });
+  // console.log(req.user);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { avatarLink: req.user.avatar },
+        "Avatar updated successfully"
+      )
+    );
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+  // allow updating file only if user is logged in
+  // take the file through 'multer' middleware
+  // save the file in cloudinary
+  // save the cloudinary-links of the file to the db
+
+  const coverImageLocalFilePath = req.file?.path;
+
+  if (!coverImageLocalFilePath) {
+    throw new ApiError(400, "CoverImage is missing!");
+  }
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+
+  if (!coverImage.url) {
+    throw new ApiError(
+      500,
+      "Something went wrong while updating the coverImage! Please try again!"
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: { coverImage: coverImage.url },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { coverImageLink: user.coverImage },
+        "CoverImage updated successfully"
+      )
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -377,4 +455,6 @@ export {
   changePassword,
   getCurrentUser,
   updateAccountDetails,
+  updateAvatar,
+  updateCoverImage,
 };
