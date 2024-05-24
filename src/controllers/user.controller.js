@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/AsyncHandler.util.js";
 import { ApiError } from "../utils/ApiError.util.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.util.js";
+import { deleteFileFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.util.js";
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import jwt from "jsonwebtoken";
 
@@ -392,9 +392,15 @@ const updateAvatar = asyncHandler(async (req, res) => {
     );
   }
 
+  const oldAvatar = req.user?.avatar;
+  const oldAvatarPublicId = oldAvatar.split(/\//).slice(-1)[0].split(/\./)[0];
+  // console.log(oldAvatarPublicId);
+
   req.user.avatar = avatar.url;
   await req.user.save({ validateBeforeSave: false });
   // console.log(req.user);
+
+  if(oldAvatarPublicId) await deleteFileFromCloudinary(oldAvatarPublicId);
 
   return res
     .status(200)
@@ -428,6 +434,9 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     );
   }
 
+  const oldCoverImage = req.user?.coverImage;
+  const oldCoverImagePublicId = oldCoverImage.split(/\//).slice(-1)[0].split(/\./)[0];
+
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
@@ -435,6 +444,8 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     },
     { new: true }
   ).select("-password");
+
+  if(oldCoverImagePublicId) await deleteFileFromCloudinary(oldCoverImagePublicId);
 
   return res
     .status(200)
