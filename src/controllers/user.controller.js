@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { deleteFileFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.util.js";
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import jwt from "jsonwebtoken";
+import { CLOUDINARY_FOLDER_PATH } from "../constants.js";
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
@@ -393,7 +394,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
   }
 
   const oldAvatar = req.user?.avatar;
-  const oldAvatarPublicId = oldAvatar.split(/\//).slice(-1)[0].split(/\./)[0];
+  const oldAvatarPublicId = CLOUDINARY_FOLDER_PATH + "/" +(oldAvatar.split(/\//).slice(-1)[0].split(/\./)[0]);
   // console.log(oldAvatarPublicId);
 
   req.user.avatar = avatar.url;
@@ -435,7 +436,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   }
 
   const oldCoverImage = req.user?.coverImage;
-  const oldCoverImagePublicId = oldCoverImage.split(/\//).slice(-1)[0].split(/\./)[0];
+  const oldCoverImagePublicId = CLOUDINARY_FOLDER_PATH + "/" + (oldCoverImage.split(/\//).slice(-1)[0].split(/\./)[0]);
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,

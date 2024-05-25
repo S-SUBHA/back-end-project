@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import { ApiError } from "./ApiError.util.js";
+import { CLOUDINARY_FOLDER_PATH } from "../constants.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -15,6 +16,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     //upload file to cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      folder: CLOUDINARY_FOLDER_PATH
     });
 
     // file has been uploaded on cloudinary succesfully
