@@ -1,7 +1,10 @@
 import { asyncHandler } from "../utils/AsyncHandler.util.js";
 import { ApiError } from "../utils/ApiError.util.js";
 import { User } from "../models/user.model.js";
-import { deleteFileFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.util.js";
+import {
+  deleteFileFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.util.js";
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import jwt from "jsonwebtoken";
 import { CLOUDINARY_FOLDER_PATH } from "../constants.js";
@@ -394,14 +397,17 @@ const updateAvatar = asyncHandler(async (req, res) => {
   }
 
   const oldAvatar = req.user?.avatar;
-  const oldAvatarPublicId = CLOUDINARY_FOLDER_PATH + "/" +(oldAvatar.split(/\//).slice(-1)[0].split(/\./)[0]);
+  const oldAvatarPublicId =
+    CLOUDINARY_FOLDER_PATH +
+    "/" +
+    oldAvatar.split(/\//).slice(-1)[0].split(/\./)[0];
   // console.log(oldAvatarPublicId);
 
   req.user.avatar = avatar.url;
   await req.user.save({ validateBeforeSave: false });
   // console.log(req.user);
 
-  if(oldAvatarPublicId) await deleteFileFromCloudinary(oldAvatarPublicId);
+  if (oldAvatarPublicId) await deleteFileFromCloudinary(oldAvatarPublicId);
 
   return res
     .status(200)
@@ -436,7 +442,10 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   }
 
   const oldCoverImage = req.user?.coverImage;
-  const oldCoverImagePublicId = CLOUDINARY_FOLDER_PATH + "/" + (oldCoverImage.split(/\//).slice(-1)[0].split(/\./)[0]);
+  const oldCoverImagePublicId =
+    CLOUDINARY_FOLDER_PATH +
+    "/" +
+    oldCoverImage.split(/\//).slice(-1)[0].split(/\./)[0];
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -446,7 +455,8 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password");
 
-  if(oldCoverImagePublicId) await deleteFileFromCloudinary(oldCoverImagePublicId);
+  if (oldCoverImagePublicId)
+    await deleteFileFromCloudinary(oldCoverImagePublicId);
 
   return res
     .status(200)
@@ -455,6 +465,83 @@ const updateCoverImage = asyncHandler(async (req, res) => {
         200,
         { coverImageLink: user.coverImage },
         "CoverImage updated successfully"
+      )
+    );
+});
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  // 1. get the username of the user whose channel is being visited, likely to get from params
+  // 2. write aggregation pipelines to obtain the following details of the channel owner,
+  // in oreder to populate the profile/ channel page with the values
+  // a. avatar
+  // b. coverImage
+  // c. username
+  // d. fullName
+  // e. subscribers
+  // f. subscribed (channels that the owner of the current channel follows)
+  // g. isFllowed (a boolean value)
+  // (check whether the visiting user is subscribed to the visited channel)
+
+  const channelOwnerUsername = req.params?.username;
+  // console.log(channelOwnerUsername);
+
+  if (!channelOwnerUsername) {
+    throw new ApiError(404, "Channel to visit is not specified!");
+  }
+
+  const channelDetails = await User.aggregate([
+    {
+      $match: { username: channelOwnerUsername?.toLowerCase() },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        foreignField: "channel",
+        localField: "_id",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        foreignField: "subscriber",
+        localField: "_id",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: { $size: "$subscribers" },
+        channelsSubscribedToCount: { $size: "$subscribedTo" },
+        isSubscribed: { $in: [req.user?._id, "$subscribers.subscriber"] },
+      },
+    },
+    {
+      $project: {
+        username: 1,
+        fullName: 1,
+        email: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+  // console.log("channelDetails: ", channelDetails);
+
+  if (!channelDetails.length) {
+    throw new ApiError(404, "Channel not found!");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channelDetails[0],
+        "Chennel details fetched successfully"
       )
     );
 });
@@ -469,4 +556,5 @@ export {
   updateAccountDetails,
   updateAvatar,
   updateCoverImage,
+  getUserChannelProfile,
 };
