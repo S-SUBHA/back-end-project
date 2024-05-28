@@ -546,6 +546,105 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     );
 });
 
+const getWatchHistory = asyncHandler(async (req, res) => {
+  // get the user from req.user
+  // write aggregation pipeline to find the videos
+  // that has been stored in the watchhistory array
+
+  const watchHistory = await User.aggregate([
+    {
+      $match: { _id: req.user?._id },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    _id: 1,
+                    username: 1,
+                    fullName: 1,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        watchHistory: 1,
+      },
+    },
+  ]);
+
+  // ALTERNATIVE APPROACH:
+  // const watchHistory = await User.aggregate([
+  //   {
+  //     $match: {
+  //       _id: req.user?._id,
+  //     },
+  //   },
+  //   {
+  //     $lookup: {
+  //       from: "videos",
+  //       localField: "watchHistory",
+  //       foreignField: "_id",
+  //       as: "watchHistory",
+  //       pipeline: [
+  //         {
+  //           $lookup: {
+  //             from: "users",
+  //             localField: "owner",
+  //             foreignField: "_id",
+  //             as: "owner",
+  //           },
+  //         },
+  //         {
+  //           $project: {
+  //             // owner: 1
+  //             "owner._id": 1,
+  //             "owner.username": 1,
+  //             "owner.fullName": 1,
+  //             video: 1,
+  //             thumbnail: 1,
+  //             title: 1,
+  //             // description: 1,
+  //             duration:1,
+  //             views: 1,
+  //             isPublished: 1,
+  //           },
+  //         },
+  //       ],
+  //     },
+  //   },
+  //   {
+  //     $project: {
+  //       watchHistory: 1,
+  //     },
+  //   },
+  // ]);
+
+  // console.log(watchHistory);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, watchHistory, "Watch history fetched sucessfully")
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -557,4 +656,5 @@ export {
   updateAvatar,
   updateCoverImage,
   getUserChannelProfile,
+  getWatchHistory,
 };
