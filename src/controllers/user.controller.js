@@ -8,6 +8,7 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import jwt from "jsonwebtoken";
 import { CLOUDINARY_FOLDER_PATH } from "../constants.js";
+import mongoose from "mongoose";
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
@@ -554,6 +555,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
   const watchHistory = await User.aggregate([
     {
       $match: { _id: req.user?._id },
+      // $match: { _id: new mongoose.Types.ObjectId(req.user?._id) },
     },
     {
       $lookup: {
@@ -571,12 +573,19 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               pipeline: [
                 {
                   $project: {
-                    _id: 1,
                     username: 1,
                     fullName: 1,
+                    avatar: 1,
                   },
                 },
               ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $arrayElemAt: ["$owner", 0],
+              },
             },
           },
         ],
@@ -641,7 +650,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, watchHistory, "Watch history fetched sucessfully")
+      new ApiResponse(200, watchHistory[0], "Watch history fetched sucessfully")
     );
 });
 
