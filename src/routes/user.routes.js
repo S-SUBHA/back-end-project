@@ -36,17 +36,17 @@ userRouter.route("/login").post(loginUser);
 // secured routes
 userRouter.route("/logout").post(verifyJWT, logoutUser);
 userRouter.route("/refresh-token").post(refreshAccessToken);
-userRouter.route("/change-password").post(verifyJWT, changePassword);
+userRouter.route("/change-password").patch(verifyJWT, changePassword);
 userRouter.route("/get-current-user").get(verifyJWT, getCurrentUser);
 userRouter
   .route("/update-account-details")
-  .post(verifyJWT, updateAccountDetails);
+  .patch(verifyJWT, updateAccountDetails);
 userRouter
   .route("/update-avatar")
-  .post(verifyJWT, upload.single("avatar"), updateAvatar);
+  .patch(verifyJWT, upload.single("avatar"), updateAvatar);
 userRouter
   .route("/update-cover-image")
-  .post(verifyJWT, upload.single("coverImage"), updateCoverImage);
+  .patch(verifyJWT, upload.single("coverImage"), updateCoverImage);
 userRouter
   .route("/get-channel-profile/:username")
   .get(verifyJWT, getUserChannelProfile);

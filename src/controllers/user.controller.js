@@ -8,7 +8,7 @@ import {
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import jwt from "jsonwebtoken";
 import { CLOUDINARY_FOLDER_PATH } from "../constants.js";
-import mongoose from "mongoose";
+// import mongoose from "mongoose";
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
