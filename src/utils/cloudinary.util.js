@@ -16,7 +16,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     //upload file to cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
-      folder: CLOUDINARY_FOLDER_PATH
+      folder: CLOUDINARY_FOLDER_PATH,
     });
 
     // file has been uploaded on cloudinary succesfully
@@ -33,6 +33,7 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
+// update the userController to user the deleteImageFromCloudinary function
 const deleteFileFromCloudinary = async (public_id) => {
   try {
     if (!public_id) return null;
@@ -52,4 +53,33 @@ const deleteFileFromCloudinary = async (public_id) => {
   }
 };
 
-export { uploadOnCloudinary, deleteFileFromCloudinary };
+const deleteImageFromCloudinary = async (fileURL) => {
+  try {
+    if(typeof(fileURL) != "string") {
+      throw new ApiError(400, "Improper URL for the file is sent!");
+    }
+    const public_id =
+      CLOUDINARY_FOLDER_PATH +
+      "/" +
+      fileURL.split(/\//).slice(-1)[0].split(/\./)[0];
+
+    // console.log(public_id);
+
+    if (!public_id) return null;
+
+    const response = await cloudinary.uploader.destroy(public_id, {
+      resource_type: "image",
+      invalidate: true,
+    });
+    // console.log(response);
+
+    return response;
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while deleteing file on Cloudinary!"
+    );
+  }
+};
+
+export { uploadOnCloudinary, deleteFileFromCloudinary, deleteImageFromCloudinary };

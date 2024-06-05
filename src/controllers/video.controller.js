@@ -4,7 +4,10 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.util.js";
 import { ApiResponse } from "../utils/ApiResponse.util.js";
 import { asyncHandler } from "../utils/AsyncHandler.util.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.util.js";
+import {
+  deleteImageFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.util.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -49,7 +52,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
   const thumbnail = await uploadOnCloudinary(thumbnailLocalFilePath);
   const videoFile = await uploadOnCloudinary(videoLocalFilePath);
 
-//   console.log("THUMBNAIL: ", thumbnail, "\n\n", "VIDEOFILE: ", videoFile.audio);
+  //   console.log("THUMBNAIL: ", thumbnail, "\n\n", "VIDEOFILE: ", videoFile.audio);
 
   if (!thumbnail || !videoFile) {
     throw new ApiError(
@@ -77,18 +80,89 @@ const publishAVideo = asyncHandler(async (req, res) => {
   }
 
   return res
-    .status(200)
+    .status(201)
     .json(new ApiResponse(200, video, "Video published successfully"));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: get video by id
+
+  if (!videoId) {
+    throw new ApiError(400, "Please specify the video to be fetched!");
+  }
+
+  const video = await Video.findById(
+    videoId /*new mongoose.Types.ObjectId(videoId)*/
+  );
+
+  if (!video) {
+    throw new ApiError(500, "Something went wrong while fetching the video!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
+  // get the video from the database using the videoId provided through params
+  // check if the logged in user is the owner of the video
+  // get the title and description from req.body
+  // get the thumnail from req.file (multer middleware)
+  // if none of the fields have any data return appropiate error message
+  // update (only) the fields that has been requested
+  // save the updated (video) document in the db
+  // return the updated (video) document
+
   const { videoId } = req.params;
   //TODO: update video details like title, description, thumbnail
+
+  if (!videoId) {
+    throw new ApiError(400, "Video id is required!");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video is not found!");
+  }
+
+  if (!req.user._id.equals(video.owner)) {
+    throw new ApiError(
+      400,
+      "Bad request! User doesnot own the video and only the owner of the video can update it!"
+    );
+  }
+
+  const { title, description } = req.body;
+
+  let thumbnailLocalFilePath = null;
+  if (req.file) {
+    thumbnailLocalFilePath = req.file.path;
+  }
+
+  if (!title && !description && !thumbnailLocalFilePath) {
+    throw new ApiError(400, "What to update is not specified!");
+  }
+
+  if (title) {
+    video.title = title;
+  }
+  if (description) {
+    video.description = description;
+  }
+  if (thumbnailLocalFilePath) {
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalFilePath);
+    await deleteImageFromCloudinary(video.thumbnail);
+    video.thumbnail = thumbnail.url;
+  }
+
+  await video.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video details updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
