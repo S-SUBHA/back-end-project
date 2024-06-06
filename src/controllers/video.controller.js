@@ -193,8 +193,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found!");
   }
 
-  if(!req.user._id.equals(video.owner)){
-    throw new ApiError(401, `UNAUTORIZED REQUEST: ${req.user.username} is not the owner of the video!`);
+  if (!req.user._id.equals(video.owner)) {
+    throw new ApiError(
+      401,
+      `UNAUTORIZED REQUEST: ${req.user.username} is not the owner of the video!`
+    );
   }
 
   const videoCloudinaryUrl = video.video;
@@ -218,7 +221,52 @@ const deleteVideo = asyncHandler(async (req, res) => {
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
+  // get the videoId from req.params
+  // update the 'isPublished' field of the video document in the db
+  // get the updated video document
+  // return the updatedVideo
+
   const { videoId } = req.params;
+
+  if (!videoId) {
+    throw new ApiError(400, "Video id is required!");
+  }
+
+  const video = await Video.findOne({ _id: videoId });
+
+  if (!video) {
+    throw new ApiError(404, "Video not found!");
+  }
+
+  if (!req.user._id.equals(video.owner)) {
+    throw new ApiError(
+      401,
+      `UNAUTORIZED REQUEST: ${req.user.username} is not the owner of the video!`
+    );
+  }
+
+  const updatedVideo = await Video.findByIdAndUpdate(
+    video._id,
+    { isPublished: !video.isPublished },
+    { new: true }
+  );
+
+  if (!updatedVideo) {
+    throw new ApiError(
+      500,
+      "Something went wrong while updating the document in the database!"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedVideo,
+        "Published status toggled successfully"
+      )
+    );
 });
 
 export {
