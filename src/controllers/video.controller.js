@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.util.js";
 import { asyncHandler } from "../utils/AsyncHandler.util.js";
 import {
   deleteImageFromCloudinary,
+  deleteVideoFromCloudinary,
   uploadOnCloudinary,
 } from "../utils/cloudinary.util.js";
 
@@ -166,8 +167,54 @@ const updateVideo = asyncHandler(async (req, res) => {
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
+  // get the videoId from req.params
+  // find the video from the db using the videoId
+  // get the video url from the video obtained from db
+  // delete the video from cloudinary
+  // delete the video from the db
+
+  // note: the order of deletion could be opposite too
+  // and that would have required one less query as well,
+  // but the reason the behind choosing
+  // above mentioned order is to ensure that
+  // the video is deleted from cloudinary
+  // before deleting the document from the db;
+
   const { videoId } = req.params;
   //TODO: delete video
+
+  if (!videoId) {
+    throw new ApiError(400, "Video id is required!");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found!");
+  }
+
+  if(!req.user._id.equals(video.owner)){
+    throw new ApiError(401, `UNAUTORIZED REQUEST: ${req.user.username} is not the owner of the video!`);
+  }
+
+  const videoCloudinaryUrl = video.video;
+
+  await deleteVideoFromCloudinary(videoCloudinaryUrl);
+  // no need to check if deletion is done properly as the check is being done
+  // already, in deleteVidoFromCloudinary
+
+  const deletedVideo = await Video.findOneAndDelete({ _id: video._id });
+
+  if (!deletedVideo) {
+    throw new ApiError(
+      500,
+      "Couldnot delete the video as something went wrong while deleting the video form the db!"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, deletedVideo, "Successfully deleted the video"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {

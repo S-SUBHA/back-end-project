@@ -82,4 +82,33 @@ const deleteImageFromCloudinary = async (fileURL) => {
   }
 };
 
-export { uploadOnCloudinary, deleteFileFromCloudinary, deleteImageFromCloudinary };
+const deleteVideoFromCloudinary = async (fileURL) => {
+  try {
+    if(typeof(fileURL) != "string") {
+      throw new ApiError(400, "Improper URL for the file is sent!");
+    }
+    const public_id =
+      CLOUDINARY_FOLDER_PATH +
+      "/" +
+      fileURL.split(/\//).slice(-1)[0].split(/\./)[0];
+
+    // console.log(public_id);
+
+    if (!public_id) return null;
+
+    const response = await cloudinary.uploader.destroy(public_id, {
+      resource_type: "video",
+      invalidate: true,
+    });
+    // console.log(response);
+
+    return response;
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while deleteing file on Cloudinary!"
+    );
+  }
+};
+
+export { uploadOnCloudinary, deleteFileFromCloudinary, deleteImageFromCloudinary, deleteVideoFromCloudinary };
