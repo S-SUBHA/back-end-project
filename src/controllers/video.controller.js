@@ -93,12 +93,16 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please specify the video to be fetched!");
   }
 
+  if(!isValidObjectId(videoId)){
+    throw new ApiError(400, "Improper video id!");
+  }
+
   const video = await Video.findById(
     videoId /*new mongoose.Types.ObjectId(videoId)*/
   );
 
   if (!video) {
-    throw new ApiError(500, "Something went wrong while fetching the video!");
+    throw new ApiError(404, "Video not found!");
   }
 
   return res
@@ -121,6 +125,10 @@ const updateVideo = asyncHandler(async (req, res) => {
 
   if (!videoId) {
     throw new ApiError(400, "Video id is required!");
+  }
+
+  if(!isValidObjectId(videoId)){
+    throw new ApiError(400, "Improper video id!");
   }
 
   const video = await Video.findById(videoId);
@@ -187,6 +195,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required!");
   }
 
+  if(!isValidObjectId(videoId)){
+    throw new ApiError(400, "Improper video id!");
+  }
+  
   const video = await Video.findById(videoId);
 
   if (!video) {
@@ -201,8 +213,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
   }
 
   const videoCloudinaryUrl = video.video;
+  const thumbnailCloudinaryUrl = video.thumbnail;
 
   await deleteVideoFromCloudinary(videoCloudinaryUrl);
+  await deleteImageFromCloudinary(thumbnailCloudinaryUrl);
   // no need to check if deletion is done properly as the check is being done
   // already, in deleteVidoFromCloudinary
 
@@ -232,6 +246,10 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required!");
   }
 
+  if(!isValidObjectId(videoId)){
+    throw new ApiError(400, "Improper video id!");
+  }
+  
   const video = await Video.findOne({ _id: videoId });
 
   if (!video) {
