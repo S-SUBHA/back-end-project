@@ -5,9 +5,75 @@ import { ApiResponse } from "../utils/ApiResponse.util.js";
 import { asyncHandler } from "../utils/AsyncHandler.util.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
+  // get all comments corresponding the videoId
+  // paginate them using mongooseAggregatePaginate method
+  // return proper response
+
   //TODO: get all comments for a video
   const { videoId } = req.params;
   const { page = 1, limit = 10 } = req.query;
+
+  if (!videoId) {
+    throw new ApiError(400, "INSUFFICIENT INPUT: Video is is required!");
+  }
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "INVALID INPUT: Proper video id is required!");
+  }
+
+  const comments = await Comment.aggregate([
+    {
+      $match: { video: new mongoose.Types.ObjectId(videoId) },
+    },
+    {
+      $project: {
+        content: 1,
+        video: 1,
+        owner: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+  ]);
+
+  if (!comments.length) {
+    throw new ApiError(404, "Video or comments not found!");
+  }
+  // const customLabels = { pagingCounter: "pageStartingElement" };
+
+  const paginatedComments = await Comment.aggregatePaginate(comments, {
+    page,
+    limit,
+    // customLabels,
+  });
+
+  // console.log("\n");
+  // console.log(comments);
+  // console.log("\n");
+  // console.log("..............................................................");
+  // console.log("\n");
+  // console.log(paginatedComments);
+  // console.log("\n");
+  // console.log("..............................................................");
+  // console.log("\n");
+  // throw new ApiError(200, "T...");
+
+  if (!paginatedComments) {
+    throw new ApiError(
+      500,
+      "SERVER ERROR: Something went wrong during pagination!"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        paginatedComments,
+        "Comments fetched successfully."
+      )
+    );
 });
 
 const addComment = asyncHandler(async (req, res) => {
