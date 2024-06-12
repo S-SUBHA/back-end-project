@@ -11,7 +11,6 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
   //TODO: get all comments for a video
   const { videoId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
 
   if (!videoId) {
     throw new ApiError(400, "INSUFFICIENT INPUT: Video is is required!");
@@ -19,6 +18,21 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
   if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "INVALID INPUT: Proper video id is required!");
+  }
+
+  let { page = 1, limit = 10 } = req.query;
+
+  // convert the query parameters from string to number and check if they are valid input
+  // console.log("page: ", page, typeof page, "\t::\t", "limit: ", limit, typeof limit);
+  page = ~~page;
+  limit = ~~limit;
+  // console.log("page: ", page, typeof page, "\t::\t", "limit: ", limit, typeof limit);
+
+  if (page === 0 || limit === 0) {
+    throw new ApiError(
+      400,
+      "INVALID INPUT: Page and limit both have to be positive integers!"
+    );
   }
 
   const comments = await Comment.aggregate([
@@ -47,7 +61,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
     // customLabels,
   });
 
-  // console.log("\n");
+  // testing...
+  {// console.log("\n");
   // console.log(comments);
   // console.log("\n");
   // console.log("..............................................................");
@@ -57,6 +72,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   // console.log("..............................................................");
   // console.log("\n");
   // throw new ApiError(200, "T...");
+  }
 
   if (!paginatedComments) {
     throw new ApiError(
@@ -68,11 +84,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        paginatedComments,
-        "Comments fetched successfully."
-      )
+      new ApiResponse(200, paginatedComments, "Comments fetched successfully.")
     );
 });
 
