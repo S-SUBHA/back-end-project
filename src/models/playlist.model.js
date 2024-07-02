@@ -9,7 +9,7 @@ const playlistSchema = new Schema(
     },
     description: {
       type: String,
-    //   required: true,
+      // required: true,
     },
     videos: [
       {
@@ -21,6 +21,10 @@ const playlistSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    // isPrivate: {
+    //   type: Boolean,
+    //   default: true,
+    // },
   },
   { timestamps: true }
 );
