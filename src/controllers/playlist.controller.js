@@ -83,6 +83,26 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video id!");
   }
 
+  // TODO:
+  const video = await Playlist.findOne({
+    $and: [
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { videos: { $in: [new mongoose.Types.ObjectId(videoId)] } },
+    ],
+  });
+
+  if (video) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          video,
+          "Given video already exists in the playlist."
+        )
+      );
+  }
+
   const playlist = await Playlist.findByIdAndUpdate(
     new mongoose.Types.ObjectId(playlistId),
     {
@@ -157,7 +177,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        updatePlaylist,
+        updatedPlaylist,
         "Video deleted from the playlist successfully."
       )
     );
@@ -182,7 +202,9 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Playlist not found!");
   }
 
-  return res.status(200).json(200, playlist, "Playlist deleted successfully.");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, "Playlist deleted successfully."));
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
@@ -225,7 +247,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
 
   const updatedPlaylist = await Playlist.findByIdAndUpdate(
     new mongoose.Types.ObjectId(playlist._id),
-    { $set: [{ name }, { description }] },
+    { $set: { name, description } },
     { new: true }
   );
 
