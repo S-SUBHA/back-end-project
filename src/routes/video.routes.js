@@ -3,6 +3,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import {
   deleteVideo,
+  getAllVideos,
   getVideoById,
   publishAVideo,
   togglePublishStatus,
@@ -14,6 +15,7 @@ const router = Router();
 router.use(verifyJWT);
 
 router.route("/")
+        .get(getAllVideos)
         .post(
           upload.fields([
             {

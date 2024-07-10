@@ -11,8 +11,182 @@ import {
 } from "../utils/cloudinary.util.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  // get the queries from req.query
+  // check the types of the input queries properly and confirm if they are as expected or not before doing any operations using them
+  // excecute your aggregation
+  // paginate the aggregation response using aggregatePaginate
+  // return the response
+
+  // const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
+
+  // sortBy options: [title, durartion, views, owner.username]
+  // sortType options: [ascending, descending]
+  let {
+    page = 1,
+    limit = 10,
+    sortBy,
+    sortType,
+    userId = undefined,
+  } = req.query;
+
+  page = ~~page;
+  limit = ~~limit;
+
+  // checks for page and limit
+  if (page === 0 || limit === 0) {
+    throw new ApiError(
+      400,
+      "INVALID INPUT: Page and limit both have to be positive integers!"
+    );
+  }
+
+  // checks for sortBy and sortType
+  const sortByOptions = ["title", "duration", "views", "owner.username"];
+  const sortTypeOptions = ["ascending", "descending"];
+
+  if (!sortBy || !sortType) {
+    throw new ApiError(400, "INSUFFICIENT INPUT: Query is incomplete!");
+  }
+
+  if (!sortByOptions.some((op) => op === sortBy)) {
+    throw new ApiError(400, "Invalid option to sort by!");
+  }
+
+  if (!sortTypeOptions.some((op) => op === sortType)) {
+    throw new ApiError(400, "Invalid type for sorting!");
+  }
+
+  // checks for userId
+  if (userId && !isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid user id!");
+  }
+
+  // Note: mongoose-aggregate-paginate-v2, version: 1.1.1 (version: 1.0.7 is used here) accepts the pipeline directly as well as following
+  const aggregationPipeline = {
+    _pipeline: [
+      // { $match: {owner: userId ? new mongoose.Types.ObjectId(userId) : {$exists: true}}}
+      {
+        $match: userId
+          ? {
+              $and: [
+                { owner: new mongoose.Types.ObjectId(userId) },
+                { isPublished: true },
+              ],
+            }
+          : {
+              isPublished: true,
+            },
+      },
+      {
+        $lookup: {
+          from: "users",
+          foreignField: "_id",
+          localField: "owner",
+          as: "owner",
+          pipeline: [
+            {
+              $project: {
+                username: 1,
+                fullName: 1,
+                avatar: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          owner: {
+            $first: "$owner",
+          },
+        },
+      },
+    ],
+  };
+
+  // const videos = await Video.aggregate(
+  //   [
+  //     // { $match: {owner: userId ? new mongoose.Types.ObjectId(userId) : {$exists: true}}}
+  //     { $match: userId ?
+  //       {
+  //         $and: [
+  //           {owner: new mongoose.Types.ObjectId(userId)},
+  //           {isPublished: true}
+  //         ]
+  //       } : {
+  //         isPublished: true
+  //       }
+  //     },
+  //     {
+  //       $sort: {
+  //         [sortBy]: sortType === sortTypeOptions[0] ? 1 : -1,
+  //         _id: 1
+  //       }
+  //     },
+  //     {
+  //       $skip: (page - 1) * limit
+  //     },
+  //     {
+  //       $limit: limit
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "users",
+  //         foreignField: "_id",
+  //         localField: "owner",
+  //         as: "owner",
+  //         pipeline: [
+  //           {
+  //             $project: {
+  //               username: 1,
+  //               fullName: 1,
+  //               avatar: 1,
+  //             }
+  //           }
+  //         ]
+  //       }
+  //     },
+  //     {
+  //       $addFields: {
+  //         owner: {
+  //           $first: "$owner",
+  //         }
+  //       }
+  //     },
+  //   ]
+  // );
+
+  // return res.json(new ApiResponse(200, videos, "Testing..."));
+
+  // console.log(videos);
+
+  // sortBy = (sortType === sortTypeOptions[0] ? sortBy : "-" + sortBy) + " _id";
+  // console.log(sortBy);
+  // const paginateOptions = {page, limit, sort: sortBy };
+  const paginateOptions = { page, limit, sort: { [sortBy]: sortType, _id: 1 } };
+
+  const paginatedVideos = await Video.aggregatePaginate(
+    aggregationPipeline,
+    paginateOptions
+  );
+
+  if (!paginatedVideos) {
+    throw new ApiError(
+      500,
+      "SERVER ERROR: Something went wrong during pagination!"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        paginatedVideos,
+        "Videos fetched and paginated successfully."
+      )
+    );
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -93,7 +267,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please specify the video to be fetched!");
   }
 
-  if(!isValidObjectId(videoId)){
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Improper video id!");
   }
 
@@ -127,7 +301,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required!");
   }
 
-  if(!isValidObjectId(videoId)){
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Improper video id!");
   }
 
@@ -195,10 +369,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required!");
   }
 
-  if(!isValidObjectId(videoId)){
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Improper video id!");
   }
-  
+
   const video = await Video.findById(videoId);
 
   if (!video) {
@@ -246,10 +420,10 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required!");
   }
 
-  if(!isValidObjectId(videoId)){
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Improper video id!");
   }
-  
+
   const video = await Video.findOne({ _id: videoId });
 
   if (!video) {
