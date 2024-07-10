@@ -12,6 +12,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
   //TODO: get all comments for a video
   const { videoId } = req.params;
 
+  let { page = 1, limit = 10 } = req.query;
+
   if (!videoId) {
     throw new ApiError(400, "INSUFFICIENT INPUT: Video is is required!");
   }
@@ -19,8 +21,6 @@ const getVideoComments = asyncHandler(async (req, res) => {
   if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "INVALID INPUT: Proper video id is required!");
   }
-
-  let { page = 1, limit = 10 } = req.query;
 
   // convert the query parameters from string to number and check if they are valid input
   // console.log("page: ", page, typeof page, "\t::\t", "limit: ", limit, typeof limit);
@@ -35,34 +35,56 @@ const getVideoComments = asyncHandler(async (req, res) => {
     );
   }
 
-  const comments = await Comment.aggregate([
-    {
-      $match: { video: new mongoose.Types.ObjectId(videoId) },
-    },
-    {
-      $project: {
-        content: 1,
-        video: 1,
-        owner: 1,
-        createdAt: 1,
-        updatedAt: 1,
-      },
-    },
-  ]);
+  // const comments = await Comment.aggregate([
+  //   {
+  //     $match: { video: new mongoose.Types.ObjectId(videoId) },
+  //   },
+  //   {
+  //     $project: {
+  //       content: 1,
+  //       video: 1,
+  //       owner: 1,
+  //       createdAt: 1,
+  //       updatedAt: 1,
+  //     },
+  //   },
+  // ]);
 
-  if (!comments.length) {
-    throw new ApiError(404, "Video or comments not found!");
-  }
+  // if (!comments.length) {
+  //   throw new ApiError(404, "Video or comments not found!");
+  // }
+
+  const aggregationPipeline = {
+    _pipeline: [
+      {
+        $match: { video: new mongoose.Types.ObjectId(videoId) },
+      },
+      {
+        $project: {
+          content: 1,
+          video: 1,
+          owner: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    ],
+  };
+
   // const customLabels = { pagingCounter: "pageStartingElement" };
 
-  const paginatedComments = await Comment.aggregatePaginate(comments, {
-    page,
-    limit,
-    // customLabels,
-  });
+  const paginatedComments = await Comment.aggregatePaginate(
+    aggregationPipeline,
+    {
+      page,
+      limit,
+      // customLabels,
+    }
+  );
 
   // testing...
-  {// console.log("\n");
+
+  // console.log("\n");
   // console.log(comments);
   // console.log("\n");
   // console.log("..............................................................");
@@ -71,8 +93,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
   // console.log("\n");
   // console.log("..............................................................");
   // console.log("\n");
+
   // throw new ApiError(200, "T...");
-  }
 
   if (!paginatedComments) {
     throw new ApiError(
